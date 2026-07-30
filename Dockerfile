@@ -1,10 +1,14 @@
 FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
 
-COPY logiclinter-backend/mvnw .
-COPY logiclinter-backend/.mvn .mvn
-COPY logiclinter-backend/pom.xml .
-COPY logiclinter-backend/src src
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+COPY src src
+
+# Fix line endings and grant execute permission to mvnw
+RUN dos2unix mvnw || true
+RUN chmod +x mvnw
 
 RUN ./mvnw clean package -DskipTests
 
