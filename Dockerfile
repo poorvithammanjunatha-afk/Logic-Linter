@@ -1,15 +1,13 @@
-# Build stage
 FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
 
-COPY mvnw .
-COPY .mvn .mvn
-COPY pom.xml .
-COPY src src
+COPY logiclinter-backend/mvnw .
+COPY logiclinter-backend/.mvn .mvn
+COPY logiclinter-backend/pom.xml .
+COPY logiclinter-backend/src src
 
 RUN ./mvnw clean package -DskipTests
 
-# Run stage
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
