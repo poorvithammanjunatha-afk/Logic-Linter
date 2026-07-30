@@ -18,7 +18,7 @@ public class GeminiService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String analyzeCode(String language, String codeSnippet) {
-        String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+        String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey;
         String prompt = "Review this " + language + " code and return a JSON object with EXACTLY three fields: " +
                 "\"mainBug\" (a brief 1-sentence description of the main error), " +
                 "\"tip\" (a quick sentence on how to fix it), and " +
