@@ -1,0 +1,5 @@
+com\logiclinter\logiclinter_backend\LogiclinterBackendApplication.class
+com\logiclinter\logiclinter_backend\service\GeminiService.class
+com\logiclinter\logiclinter_backend\model\AnalysisResponse.class
+com\logiclinter\logiclinter_backend\controller\AnalysisController.class
+com\logiclinter\logiclinter_backend\model\AnalysisRequest.class
