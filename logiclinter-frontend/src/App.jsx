@@ -15,7 +15,7 @@ function App() {
     setReview('');
 
     try {
-      const response = await axios.post('http://localhost:8080/api/analyze', { code });
+      const response = await axios.post('https://logic-linter-1.onrender.com/api/analyze', { code });
       
       const data = response.data;
       let reviewText = '';
@@ -29,7 +29,7 @@ function App() {
       setReview(reviewText);
     } catch (err) {
       console.error(err);
-      setError('Failed to connect to the backend server. Make sure Spring Boot is running on port 8080.');
+      setError('Failed to connect to the backend server. Make sure the Render backend is running.');
     } finally {
       setLoading(false);
     }
