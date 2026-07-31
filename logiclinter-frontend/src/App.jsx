@@ -15,7 +15,7 @@ function App() {
     setReview('');
 
     try {
-      const response = await axios.post('https://logic-linter-1.onrender.com/api/analyze', { code });
+      const response = await axios.post('https://logiclinter-backend-api.onrender.com', { code });
       
       const data = response.data;
       let reviewText = '';
