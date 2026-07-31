@@ -12,9 +12,8 @@ import java.net.http.HttpResponse;
 @Service
 public class GeminiService {
 
-    @Value("${ai.api.key}")
+    @Value("${gemini.api.key}")
     private String apiKey;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String analyzeCode(String language, String codeSnippet) {
