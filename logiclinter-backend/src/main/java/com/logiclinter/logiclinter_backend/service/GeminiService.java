@@ -2,7 +2,6 @@ package com.logiclinter.logiclinter_backend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,21 +11,17 @@ import java.net.http.HttpResponse;
 @Service
 public class GeminiService {
 
-    @Value("${gemini.api.key:}")
-    private String propertyApiKey;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
-    
 
     public String analyzeCode(String language, String codeSnippet) {
-        // Fallback to reading directly from System environment variables if property is empty
-        String apiKey = (propertyApiKey == null || propertyApiKey.isEmpty()) 
-                ? System.getenv("GEMINI_API_KEY") 
-                : propertyApiKey;
+        // Read directly and safely from Render's environment variables at runtime
+        String apiKey = System.getenv("GEMINI_API_KEY");
+        
+        if (apiKey == null || apiKey.isEmpty()) {
+            return "{\"error\": \"GEMINI_API_KEY environment variable is not configured on the server.\"}";
+        }
 
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
-        
-        // (Rest of your method stays the same...)
         
         // Clean and optimize payload to reduce token consumption
         String trimmedCode = (codeSnippet == null) ? "" : codeSnippet.replaceAll("(?m)^[ \t]*\r?\n", "").trim();
@@ -50,7 +45,7 @@ public class GeminiService {
         String requestBody = "{\"contents\":[{\"parts\":[{\"text\":\"" + escapedPrompt + "\"}]}],\"generationConfig\":{\"response_mime_type\":\"application/json\"}}";
 
         int maxRetries = 3;
-        long waitTimeMillis = 3000; // Start with a 3-second delay for backoff
+        long waitTimeMillis = 3000;
 
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
@@ -63,21 +58,19 @@ public class GeminiService {
 
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 
-                // Parse the Gemini response JSON wrapper
                 JsonNode rootNode = objectMapper.readTree(response.body());
                 
-                // If a 429 error is returned inside the body payload, handle it for retry
                 if (response.statusCode() == 429 || rootNode.has("error")) {
                     JsonNode errorNode = rootNode.path("error");
                     int errorCode = errorNode.path("code").asInt(response.statusCode());
                     
                     if (errorCode == 429 && attempt < maxRetries) {
                         Thread.sleep(waitTimeMillis);
-                        waitTimeMillis *= 2; // Exponential backoff scaling
+                        waitTimeMillis *= 2;
                         continue;
                     }
                     
-                    return response.body(); // Return raw error if retries are exhausted
+                    return response.body();
                 }
 
                 JsonNode textNode = rootNode.path("candidates")
