@@ -46,7 +46,8 @@ public class GeminiService {
 
         int maxRetries = 3;
         long waitTimeMillis = 3000;
-for (int attempt = 1; attempt <= maxRetries; attempt++) {
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
@@ -57,14 +58,13 @@ for (int attempt = 1; attempt <= maxRetries; attempt++) {
 
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 
-                // If it's a 429 or error response, handle retries or fall through
+                // If it's a 429, handle retries or break out to fallback
                 if (response.statusCode() == 429) {
                     if (attempt < maxRetries) {
                         Thread.sleep(waitTimeMillis);
                         waitTimeMillis *= 2;
                         continue;
                     }
-                    // If retries are exhausted, break out to trigger the fallback return below
                     break;
                 }
 
@@ -88,7 +88,7 @@ for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 if (!textNode.isMissingNode()) {
                     return textNode.asText();
                 } else {
-                    break; // Break out to return fallback if structure is unexpected
+                    break;
                 }
 
             } catch (InterruptedException ie) {
@@ -114,3 +114,5 @@ for (int attempt = 1; attempt <= maxRetries; attempt++) {
                "  \"tip\": \"Add a null check validation safeguard or surround the block with a try-catch exception handler.\",\n" +
                "  \"refactoredCode\": \"// Refactored by LogicLinter AI Engine\\nif (input != null) {\\n    // Safe execution block\\n    System.out.println(input.toString());\\n} else {\\n    throw new IllegalArgumentException(\\\"Input cannot be null\\\");\\n}\"\n" +
                "}";
+    }
+}
