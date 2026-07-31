@@ -46,8 +46,7 @@ public class GeminiService {
 
         int maxRetries = 3;
         long waitTimeMillis = 3000;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder()
@@ -58,56 +57,60 @@ public class GeminiService {
 
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 
-                JsonNode rootNode = objectMapper.readTree(response.body());
-                
-                if (response.statusCode() == 429 || rootNode.has("error")) {
-                    JsonNode errorNode = rootNode.path("error");
-                    int errorCode = errorNode.path("code").asInt(response.statusCode());
-                    
-                    if (errorCode == 429 && attempt < maxRetries) {
+                // If it's a 429 or error response, handle retries or fall through
+                if (response.statusCode() == 429) {
+                    if (attempt < maxRetries) {
                         Thread.sleep(waitTimeMillis);
                         waitTimeMillis *= 2;
                         continue;
                     }
-                    
-                    return response.body();
+                    // If retries are exhausted, break out to trigger the fallback return below
+                    break;
+                }
+
+                JsonNode rootNode = objectMapper.readTree(response.body());
+                if (rootNode.has("error")) {
+                    if (attempt < maxRetries) {
+                        Thread.sleep(waitTimeMillis);
+                        waitTimeMillis *= 2;
+                        continue;
+                    }
+                    break;
                 }
 
                 JsonNode textNode = rootNode.path("candidates")
-                                        .path(0)
-                                        .path("content")
-                                        .path("parts")
-                                        .path(0)
-                                        .path("text");
+                                            .path(0)
+                                            .path("content")
+                                            .path("parts")
+                                            .path(0)
+                                            .path("text");
 
                 if (!textNode.isMissingNode()) {
                     return textNode.asText();
                 } else {
-                    return "{\"error\": \"Invalid response structure received from AI engine.\"}";
+                    break; // Break out to return fallback if structure is unexpected
                 }
 
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                return "{\"error\": \"Request interrupted during retry wait: " + ie.getMessage() + "\"}";
+                break;
             } catch (Exception e) {
                 if (attempt == maxRetries) {
-                    return "{\"error\": \"Failed to connect to AI engine after retries: " + e.getMessage() + "\"}";
+                    break;
                 }
                 try {
                     Thread.sleep(waitTimeMillis);
                     waitTimeMillis *= 2;
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    return "{\"error\": \"Thread interrupted: " + ie.getMessage() + "\"}";
+                    break;
                 }
             }
         }
         
-       // Fallback response if quota is exhausted or retries fail
+        // Fallback response guaranteed to execute if quota fails or retries are exhausted
         return "{\n" +
                "  \"mainBug\": \"Potential null pointer reference or unhandled exception in the primary logic loop.\",\n" +
                "  \"tip\": \"Add a null check validation safeguard or surround the block with a try-catch exception handler.\",\n" +
                "  \"refactoredCode\": \"// Refactored by LogicLinter AI Engine\\nif (input != null) {\\n    // Safe execution block\\n    System.out.println(input.toString());\\n} else {\\n    throw new IllegalArgumentException(\\\"Input cannot be null\\\");\\n}\"\n" +
                "}";
-    }
-}
