@@ -16,6 +16,7 @@ public class GeminiService {
     private String propertyApiKey;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
 
     public String analyzeCode(String language, String codeSnippet) {
         // Fallback to reading directly from System environment variables if property is empty
