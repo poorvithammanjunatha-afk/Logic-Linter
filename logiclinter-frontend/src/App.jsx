@@ -15,7 +15,10 @@ function App() {
     setReview('');
 
     try {
-      const response = await axios.post('https://logiclinter-backend-api.onrender.com', { code });
+      const response = await axios.post('https://logiclinter-backend-api.onrender.com/api/analyze', { 
+  language: 'c', // or whatever language field your backend expects
+  code: code 
+});
       
       const data = response.data;
       let reviewText = '';
