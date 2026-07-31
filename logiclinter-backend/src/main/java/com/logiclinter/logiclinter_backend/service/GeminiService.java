@@ -19,11 +19,15 @@ public class GeminiService {
 
     public String analyzeCode(String language, String codeSnippet) {
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+        
+        // Clean and optimize payload to reduce token consumption
+        String trimmedCode = (codeSnippet == null) ? "" : codeSnippet.replaceAll("(?m)^[ \t]*\r?\n", "").trim();
+
         String prompt = "Review this " + language + " code and return a JSON object with EXACTLY three fields: " +
                 "\"mainBug\" (a brief 1-sentence description of the main error), " +
                 "\"tip\" (a quick sentence on how to fix it), and " +
                 "\"refactoredCode\" (the corrected code).\n\n" +
-                "Code:\n" + codeSnippet;
+                "Code:\n" + trimmedCode;
 
         // Clean and escape string manually to ensure valid JSON format
         String escapedPrompt = prompt
@@ -37,38 +41,67 @@ public class GeminiService {
 
         String requestBody = "{\"contents\":[{\"parts\":[{\"text\":\"" + escapedPrompt + "\"}]}],\"generationConfig\":{\"response_mime_type\":\"application/json\"}}";
 
-        try {
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
+        int maxRetries = 3;
+        long waitTimeMillis = 3000; // Start with a 3-second delay for backoff
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            
-            // Parse the Gemini response JSON wrapper and extract only the inner text content
-            JsonNode rootNode = objectMapper.readTree(response.body());
-            
-            if (rootNode.has("error")) {
-                return response.body(); // Return the raw error if API returned one
-            }
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(endpoint))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                        .build();
 
-            JsonNode textNode = rootNode.path("candidates")
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                
+                // Parse the Gemini response JSON wrapper
+                JsonNode rootNode = objectMapper.readTree(response.body());
+                
+                // If a 429 error is returned inside the body payload, handle it for retry
+                if (response.statusCode() == 429 || rootNode.has("error")) {
+                    JsonNode errorNode = rootNode.path("error");
+                    int errorCode = errorNode.path("code").asInt(response.statusCode());
+                    
+                    if (errorCode == 429 && attempt < maxRetries) {
+                        Thread.sleep(waitTimeMillis);
+                        waitTimeMillis *= 2; // Exponential backoff scaling
+                        continue;
+                    }
+                    
+                    return response.body(); // Return raw error if retries are exhausted
+                }
+
+                JsonNode textNode = rootNode.path("candidates")
                                         .path(0)
                                         .path("content")
                                         .path("parts")
                                         .path(0)
                                         .path("text");
 
-            if (!textNode.isMissingNode()) {
-                return textNode.asText();
-            } else {
-                return "{\"error\": \"Invalid response structure received from AI engine.\"}";
-            }
+                if (!textNode.isMissingNode()) {
+                    return textNode.asText();
+                } else {
+                    return "{\"error\": \"Invalid response structure received from AI engine.\"}";
+                }
 
-        } catch (Exception e) {
-            return "{\"error\": \"Failed to connect to AI engine: " + e.getMessage() + "\"}";
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return "{\"error\": \"Request interrupted during retry wait: " + ie.getMessage() + "\"}";
+            } catch (Exception e) {
+                if (attempt == maxRetries) {
+                    return "{\"error\": \"Failed to connect to AI engine after retries: " + e.getMessage() + "\"}";
+                }
+                try {
+                    Thread.sleep(waitTimeMillis);
+                    waitTimeMillis *= 2;
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return "{\"error\": \"Thread interrupted: " + ie.getMessage() + "\"}";
+                }
+            }
         }
+        
+        return "{\"error\": \"Rate limit exceeded (429). Please try again later.\"}";
     }
 }
