@@ -12,7 +12,7 @@ import java.net.http.HttpResponse;
 @Service
 public class GeminiService {
 
-    @Value("${gemini.api.key}")
+    @Value("${ai.api.key}")
     private String apiKey;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
