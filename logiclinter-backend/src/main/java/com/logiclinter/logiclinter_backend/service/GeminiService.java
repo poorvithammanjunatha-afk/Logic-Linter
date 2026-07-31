@@ -12,12 +12,20 @@ import java.net.http.HttpResponse;
 @Service
 public class GeminiService {
 
-    @Value("${gemini.api.key}")
-    private String apiKey;
+    @Value("${gemini.api.key:}")
+    private String propertyApiKey;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String analyzeCode(String language, String codeSnippet) {
+        // Fallback to reading directly from System environment variables if property is empty
+        String apiKey = (propertyApiKey == null || propertyApiKey.isEmpty()) 
+                ? System.getenv("GEMINI_API_KEY") 
+                : propertyApiKey;
+
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+        
+        // (Rest of your method stays the same...)
         
         // Clean and optimize payload to reduce token consumption
         String trimmedCode = (codeSnippet == null) ? "" : codeSnippet.replaceAll("(?m)^[ \t]*\r?\n", "").trim();
